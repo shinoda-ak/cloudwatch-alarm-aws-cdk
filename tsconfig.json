@@ -3,8 +3,6 @@
     "target": "ES2018",
     "module": "commonjs",
     "lib": ["es2018", "ESNext.AsyncIterable"],
-    "allowJs": true,
-    "checkJs": true,
     "removeComments": true,
     "resolveJsonModule": true,
     "declaration": true,
