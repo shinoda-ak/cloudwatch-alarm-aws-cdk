@@ -1,5 +1,6 @@
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
+import { Runtime } from 'aws-cdk-lib/aws-lambda'
 import * as cdk from 'aws-cdk-lib';
 import * as path from 'path';
 
@@ -9,13 +10,17 @@ export class CdkStarterStack extends cdk.Stack {
     super(scope, id, props);
 
     // 👇 lambda function definition
-    const myFunction = new lambda.Function(this, 'my-function', {
-      runtime: lambda.Runtime.NODEJS_16_X,
+    const myFunction = new NodejsFunction(this, 'my-function', {
+      bundling: {
+        minify: true,
+        target: 'es2020'
+      },
+      runtime: Runtime.NODEJS_16_X,
       memorySize: 1024,
       timeout: cdk.Duration.seconds(5),
-      handler: 'index.main',
-      code: lambda.Code.fromAsset(path.join(__dirname, '/../src/my-lambda')),
-    });
+      entry: 'src/my-lambda/index.ts'
+    })
+
 
     // 👇 define a metric for lambda errors
     const functionErrors = myFunction.metricErrors({
