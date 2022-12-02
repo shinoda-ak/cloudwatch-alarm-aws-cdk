@@ -1,16 +1,20 @@
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cwa from 'aws-cdk-lib/aws-cloudwatch-actions';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Runtime } from 'aws-cdk-lib/aws-lambda'
+import * as sns from 'aws-cdk-lib/aws-sns';
 import * as cdk from 'aws-cdk-lib';
-import * as path from 'path';
+
 
 export class CdkStarterStack extends cdk.Stack {
   // eslint-disable-next-line @typescript-eslint/no-useless-constructor
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const funcName = 'my-function'
+
     // 👇 lambda function definition
-    const myFunction = new NodejsFunction(this, 'my-function', {
+    const myFunction = new NodejsFunction(this, funcName, {
       bundling: {
         minify: true,
         target: 'es2020'
@@ -19,8 +23,7 @@ export class CdkStarterStack extends cdk.Stack {
       memorySize: 1024,
       timeout: cdk.Duration.seconds(5),
       entry: 'src/my-lambda/index.ts'
-    })
-
+    });
 
     // 👇 define a metric for lambda errors
     const functionErrors = myFunction.metricErrors({
@@ -31,23 +34,29 @@ export class CdkStarterStack extends cdk.Stack {
       period: cdk.Duration.minutes(1),
     });
 
-    // 👇 create an Alarm using the Alarm construct
-    new cloudwatch.Alarm(this, 'lambda-errors-alarm', {
-      metric: functionErrors,
+    // 👇 create Errors Alarm directly on the Metric
+    const erorrsAlarm = functionErrors.createAlarm(this, `${funcName}-errors-alarm`, {
       threshold: 1,
       comparisonOperator:
         cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
       evaluationPeriods: 1,
       alarmDescription:
-        'Alarm if the SUM of Errors is greater than or equal to the threshold (1) for 1 evaluation period',
-    });
+        `[${funcName}] Alarm if the SUM of Errors is greater than or equal to the threshold (1) for 1 evaluation period`,
+      });
 
-    // 👇 create an Alarm directly on the Metric
-    functionInvocation.createAlarm(this, 'lambda-invocation-alarm', {
+    // 👇 create Invocation Alarm directly on the Metric
+    const invocationAlarm = functionInvocation.createAlarm(this, `${funcName}-invocation-alarm`, {
       threshold: 1,
       evaluationPeriods: 1,
       alarmDescription:
-        'Alarm if the SUM of Lambda invocations is greater than or equal to the  threshold (1) for 1 evaluation period',
-    });
+        `[${funcName}] if the SUM of Lambda invocations is greater than or equal to the  threshold (1) for 1 evaluation period`,
+      });
+
+      // 👇 create SNS topic for Alarm
+      const snsTopic = new sns.Topic(this, 'lambda-alart-topic')
+
+      // 👇 Add SNS cloudwatch actions
+      invocationAlarm.addAlarmAction(new cwa.SnsAction(snsTopic))
+      erorrsAlarm.addAlarmAction(new cwa.SnsAction(snsTopic))
   }
 }
