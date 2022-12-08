@@ -51,6 +51,17 @@ export class CdkStarterStack extends cdk.Stack {
     // watch success function
     wf.watchLambdaFunction(successfuncName, successFunc)
 
+    // lambda function for timeout
+    const timeoutfuncName = 'timeout-func'
+    const timeoutFunc = new NodejsFunction(this, timeoutfuncName, {
+      ...lambdaBasicOpt,
+      timeout: cdk.Duration.seconds(10),
+      entry: 'src/my-lambda/timeout.ts'
+    });
+
+    // watch timeout function
+    wf.watchLambdaFunction(timeoutfuncName, timeoutFunc)
+
     // REST API
     const apiName = 'cdk-watchful-fs-api'
     const logGroup = new logs.LogGroup(this, `${apiName}-logs`)
@@ -81,7 +92,12 @@ export class CdkStarterStack extends cdk.Stack {
 
     // /test/success API resource
     const successResrc = testApiResrc.addResource('success')
-    // Add GET method (and errorFunc integration)
+    // Add GET method (and successFunc integration)
     successResrc.addMethod('GET', new agw.LambdaIntegration(successFunc))
+
+    // /test/timeout API resource
+    const timeoutResrc = testApiResrc.addResource('timeout')
+    // Add GET method (and successFunc integration)
+    timeoutResrc.addMethod('GET', new agw.LambdaIntegration(timeoutFunc))
   }
 }
